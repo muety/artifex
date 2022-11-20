@@ -4,21 +4,24 @@ import (
 	"errors"
 	"fmt"
 	"github.com/robfig/cron/v3"
+	"sync/atomic"
 	"time"
 )
 
 // Dispatcher maintains a pool for available workers
 // and a job queue that workers will process
 type Dispatcher struct {
-	maxWorkers int
-	maxQueue   int
-	workers    []*Worker
-	tickers    []*DispatchTicker
-	crons      []*DispatchCron
-	workerPool chan chan Job
-	jobQueue   chan Job
-	quit       chan bool
-	active     bool
+	maxWorkers      int
+	maxQueue        int
+	workers         []*Worker
+	tickers         []*DispatchTicker
+	crons           []*DispatchCron
+	workerPool      chan chan Job
+	jobQueue        chan Job
+	quit            chan bool
+	active          bool
+	countEnqueued   atomic.Int32  // number of currently enqueued jobs
+	countDispatched atomic.Uint32 // number of dispatched jobs
 }
 
 // NewDispatcher creates a new dispatcher with the given
@@ -57,6 +60,8 @@ func (d *Dispatcher) Start() {
 				go func(job Job) {
 					jobChannel := <-d.workerPool
 					jobChannel <- job
+					d.countEnqueued.Add(-1)
+					d.countDispatched.Add(1)
 				}(job)
 			case <-d.quit:
 				return
@@ -100,6 +105,7 @@ func (d *Dispatcher) Dispatch(run func()) error {
 	}
 
 	d.jobQueue <- Job{Run: run}
+	d.countEnqueued.Add(1)
 	return nil
 }
 
@@ -113,6 +119,7 @@ func (d *Dispatcher) DispatchIn(run func(), duration time.Duration) error {
 	go func() {
 		time.Sleep(duration)
 		d.jobQueue <- Job{Run: run}
+		d.countEnqueued.Add(1)
 	}()
 
 	return nil
@@ -134,6 +141,7 @@ func (d *Dispatcher) DispatchEvery(run func(), interval time.Duration) (*Dispatc
 			select {
 			case <-t.C:
 				d.jobQueue <- Job{Run: run}
+				d.countEnqueued.Add(1)
 			case <-dt.quit:
 				return
 			}
@@ -155,6 +163,7 @@ func (d *Dispatcher) DispatchCron(run func(), cronStr string) (*DispatchCron, er
 
 	_, err := dc.cron.AddFunc(cronStr, func() {
 		d.jobQueue <- Job{Run: run}
+		d.countEnqueued.Add(1)
 	})
 
 	if err != nil {
@@ -193,6 +202,14 @@ func (d *Dispatcher) DispatchCronBatch(runs []func(), cronStr string, gap time.D
 			fmt.Println(fmt.Errorf("failed to dispatch batch of jobs, %w", err))
 		}
 	}, cronStr)
+}
+
+func (d *Dispatcher) CountEnqueued() int {
+	return int(d.countEnqueued.Load())
+}
+
+func (d *Dispatcher) CountDispatched() int {
+	return int(d.countDispatched.Load())
 }
 
 // DispatchTicker represents a dispatched job ticker

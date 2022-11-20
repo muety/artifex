@@ -339,3 +339,23 @@ func TestDispatcher_DispatchCronBatch(t *testing.T) {
 	assert.Equal(t, 2, v[1])
 	assert.Equal(t, 2, v[2])
 }
+
+func TestDispatcher_Count(t *testing.T) {
+	d := NewDispatcher(1, 10)
+	d.Start()
+
+	assert.Equal(t, 0, d.CountEnqueued())
+	assert.Equal(t, 0, d.CountDispatched())
+
+	d.Dispatch(func() {})
+	d.Dispatch(func() {})
+	d.DispatchIn(func() {}, 100*time.Millisecond)
+
+	assert.Equal(t, 2, d.CountEnqueued())
+	time.Sleep(10 * time.Millisecond)
+	assert.Equal(t, 0, d.CountEnqueued())
+	assert.Equal(t, 2, d.CountDispatched())
+	time.Sleep(100 * time.Millisecond)
+	assert.Equal(t, 0, d.CountEnqueued())
+	assert.Equal(t, 3, d.CountDispatched())
+}
