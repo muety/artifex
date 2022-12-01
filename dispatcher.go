@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/robfig/cron/v3"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -22,6 +23,8 @@ type Dispatcher struct {
 	active          bool
 	countEnqueued   atomic.Int32  // number of currently enqueued jobs
 	countDispatched atomic.Uint32 // number of dispatched jobs
+	lockTickers     *sync.RWMutex
+	lockCrons       *sync.RWMutex
 }
 
 // NewDispatcher creates a new dispatcher with the given
@@ -83,13 +86,17 @@ func (d *Dispatcher) Stop() {
 		d.workers[i].Stop()
 	}
 
+	d.lockTickers.RLock()
 	for i := range d.tickers {
 		d.tickers[i].Stop()
 	}
+	d.lockTickers.RUnlock()
 
+	d.lockCrons.RLock()
 	for i := range d.crons {
 		d.crons[i].Stop()
 	}
+	d.lockCrons.RUnlock()
 
 	d.workers = []*Worker{}
 	d.tickers = []*DispatchTicker{}
@@ -134,7 +141,10 @@ func (d *Dispatcher) DispatchEvery(run func(), interval time.Duration) (*Dispatc
 
 	t := time.NewTicker(interval)
 	dt := &DispatchTicker{ticker: t, quit: make(chan bool)}
+
+	d.lockTickers.Lock()
 	d.tickers = append(d.tickers, dt)
+	d.lockTickers.Unlock()
 
 	go func() {
 		for {
@@ -159,7 +169,10 @@ func (d *Dispatcher) DispatchCron(run func(), cronStr string) (*DispatchCron, er
 	}
 
 	dc := &DispatchCron{cron: cron.New(cron.WithSeconds())}
+
+	d.lockCrons.Lock()
 	d.crons = append(d.crons, dc)
+	d.lockCrons.Unlock()
 
 	_, err := dc.cron.AddFunc(cronStr, func() {
 		d.jobQueue <- Job{Run: run}
