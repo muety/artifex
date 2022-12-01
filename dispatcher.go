@@ -23,8 +23,8 @@ type Dispatcher struct {
 	active          bool
 	countEnqueued   atomic.Int32  // number of currently enqueued jobs
 	countDispatched atomic.Uint32 // number of dispatched jobs
-	lockTickers     *sync.RWMutex
-	lockCrons       *sync.RWMutex
+	lockTickers     sync.RWMutex
+	lockCrons       sync.RWMutex
 }
 
 // NewDispatcher creates a new dispatcher with the given

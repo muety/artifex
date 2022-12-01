@@ -1,15 +1,14 @@
-[![GoDoc](http://godoc.org/github.com/mborders/artifex?status.png)](http://godoc.org/github.com/mborders/artifex)
-[![Build Status](https://travis-ci.org/mborders/artifex.svg?branch=master)](https://travis-ci.org/mborders/artifex)
-[![Go Report Card](https://goreportcard.com/badge/github.com/mborders/artifex)](https://goreportcard.com/report/github.com/mborders/artifex)
-[![codecov](https://codecov.io/gh/mborders/artifex/branch/master/graph/badge.svg)](https://codecov.io/gh/mborders/artifex)
+[![GoDoc](http://godoc.org/github.com/muety/artifex?status.png)](http://godoc.org/github.com/muety/artifex)
 
 # artifex
 
 Simple in-memory job queue for Golang using worker-based dispatching
 
-Documentation here: https://godoc.org/github.com/mborders/artifex
+Documentation here: https://godoc.org/github.com/muety/artifex
 
 Cron jobs use the robfig/cron library: https://godoc.org/github.com/robfig/cron
+
+Forked from: https://github.com/mborders/artifex
 
 ## Example Usage
 

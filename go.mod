@@ -1,4 +1,4 @@
-module github.com/muety/artifex
+module github.com/muety/artifex/v2
 
 go 1.19
 
